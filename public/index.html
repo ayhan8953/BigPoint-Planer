@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BigPoint Planer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <span class="logo">📅 BigPoint Planer</span>
+      <span id="header-time" class="header-time"></span>
+    </div>
+  </header>
+
+  <!-- PIN SCREEN -->
+  <section id="screen-pin" class="screen active">
+    <div class="pin-wrapper">
+      <h2>PIN eingeben</h2>
+      <div id="pin-dots" class="pin-dots">
+        <span class="dot"></span><span class="dot"></span>
+        <span class="dot"></span><span class="dot"></span>
+      </div>
+      <div id="pin-error" class="pin-error" style="visibility:hidden">Falsche PIN — bitte erneut versuchen</div>
+      <div class="numpad">
+        <button class="num-btn" onclick="App.pinPress('1')">1</button>
+        <button class="num-btn" onclick="App.pinPress('2')">2</button>
+        <button class="num-btn" onclick="App.pinPress('3')">3</button>
+        <button class="num-btn" onclick="App.pinPress('4')">4</button>
+        <button class="num-btn" onclick="App.pinPress('5')">5</button>
+        <button class="num-btn" onclick="App.pinPress('6')">6</button>
+        <button class="num-btn" onclick="App.pinPress('7')">7</button>
+        <button class="num-btn" onclick="App.pinPress('8')">8</button>
+        <button class="num-btn" onclick="App.pinPress('9')">9</button>
+        <button class="num-btn num-empty"></button>
+        <button class="num-btn" onclick="App.pinPress('0')">0</button>
+        <button class="num-btn num-del" onclick="App.pinDelete()">⌫</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- EMPLOYEE SCREEN -->
+  <section id="screen-employee" class="screen">
+    <div class="topbar">
+      <span id="emp-greeting" class="page-title"></span>
+      <button class="logout-btn" onclick="App.logout()">Abmelden</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Mein Arbeitsplan</h3>
+        <div class="week-nav">
+          <button class="week-btn" onclick="App.prevWeek()">&#8249;</button>
+          <span id="emp-week-label" class="week-label"></span>
+          <button class="week-btn" onclick="App.nextWeek()">&#8250;</button>
+        </div>
+      </div>
+      <div id="emp-schedule" class="schedule-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Meine Ferienantraege</h3>
+        <button class="btn btn-primary btn-sm" onclick="App.showVacationForm()">+ Ferien beantragen</button>
+      </div>
+      <div id="emp-vacations" class="vacation-list"></div>
+    </div>
+  </section>
+
+  <!-- VACATION FORM SCREEN -->
+  <section id="screen-vacation" class="screen">
+    <div class="topbar">
+      <button class="back-link" onclick="App.showScreen('employee')">&#8592; Zurueck</button>
+      <span class="page-title">Ferien beantragen</span>
+    </div>
+    <div class="card">
+      <div class="form-group">
+        <label>Von</label>
+        <input type="date" id="vac-start" class="form-input">
+      </div>
+      <div class="form-group">
+        <label>Bis</label>
+        <input type="date" id="vac-end" class="form-input">
+      </div>
+      <div class="form-group">
+        <label>Notiz (optional)</label>
+        <textarea id="vac-note" class="form-input form-textarea" placeholder="z.B. Familienurlaub..."></textarea>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="App.submitVacation()">Antrag stellen</button>
+    </div>
+  </section>
+
+  <!-- ADMIN SCREEN -->
+  <section id="screen-admin" class="screen">
+    <div class="topbar">
+      <span id="admin-greeting" class="page-title"></span>
+      <button class="logout-btn" onclick="App.logout()">Abmelden</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="App.adminTab('calendar')">&#128197; Kalender</button>
+      <button class="tab" onclick="App.adminTab('template')">&#9881; Vorlage</button>
+      <button class="tab" onclick="App.adminTab('vacations')">&#127958; Antraege</button>
+    </div>
+
+    <!-- Calendar Tab -->
+    <div id="admin-tab-calendar" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <h3>Wochenplan</h3>
+          <div class="week-nav">
+            <button class="week-btn" onclick="App.adminPrevWeek()">&#8249;</button>
+            <span id="admin-week-label" class="week-label"></span>
+            <button class="week-btn" onclick="App.adminNextWeek()">&#8250;</button>
+          </div>
+        </div>
+        <div id="admin-calendar" class="table-wrapper"></div>
+      </div>
+    </div>
+
+    <!-- Template Tab -->
+    <div id="admin-tab-template" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h3>Wochenvorlage bearbeiten</h3>
+        </div>
+        <p class="hint">Beide Felder leer lassen = freier Tag</p>
+        <div id="template-editor" class="table-wrapper"></div>
+        <button class="btn btn-primary btn-full" style="margin-top:1.2rem" onclick="App.saveTemplate()">Vorlage speichern</button>
+      </div>
+    </div>
+
+    <!-- Vacations Tab -->
+    <div id="admin-tab-vacations" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h3>Ferienantraege</h3>
+          <div class="filter-row">
+            <label class="filter-label">
+              <input type="checkbox" id="filter-pending" checked onchange="App.loadAdminVacations()"> Ausstehend
+            </label>
+            <label class="filter-label">
+              <input type="checkbox" id="filter-approved" checked onchange="App.loadAdminVacations()"> Genehmigt
+            </label>
+            <label class="filter-label">
+              <input type="checkbox" id="filter-rejected" onchange="App.loadAdminVacations()"> Abgelehnt
+            </label>
+          </div>
+        </div>
+        <div id="admin-vacations" class="vacation-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
