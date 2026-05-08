@@ -102,6 +102,44 @@ const db = {
     return rj(FILES.employees, []).sort((a, b) => a.name.localeCompare(b.name)).map(e => ({ id: e.id, name: e.name }));
   },
 
+  async getEmployeesWithPins() {
+    if (USE_PG) {
+      const r = await pool.query('SELECT id, name, pin FROM employees ORDER BY name');
+      return r.rows;
+    }
+    return rj(FILES.employees, []).sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  async isPinTaken(pin, excludeId = null) {
+    if (USE_PG) {
+      const a = await pool.query('SELECT pin FROM admins');
+      if (a.rows.some(r => r.pin === pin)) return true;
+      const q = excludeId ? 'SELECT id FROM employees WHERE pin=$1 AND id!=$2' : 'SELECT id FROM employees WHERE pin=$1';
+      const r = await pool.query(q, excludeId ? [pin, excludeId] : [pin]);
+      return r.rows.length > 0;
+    }
+    if (rj(FILES.admins, []).some(a => a.pin === pin)) return true;
+    return rj(FILES.employees, []).some(e => e.pin === pin && e.id !== excludeId);
+  },
+
+  async addEmployee(name, pin) {
+    if (USE_PG) {
+      const r = await pool.query('INSERT INTO employees (name, pin) VALUES ($1,$2) RETURNING id, name', [name, pin]);
+      return r.rows[0];
+    }
+    const emps = rj(FILES.employees, []);
+    const emp = { id: nextId(emps), name, pin };
+    emps.push(emp); wj(FILES.employees, emps);
+    return { id: emp.id, name: emp.name };
+  },
+
+  async updateEmployeePin(id, pin) {
+    if (USE_PG) { await pool.query('UPDATE employees SET pin=$1 WHERE id=$2', [pin, id]); return; }
+    const emps = rj(FILES.employees, []);
+    const i = emps.findIndex(e => e.id === id);
+    if (i >= 0) { emps[i].pin = pin; wj(FILES.employees, emps); }
+  },
+
   async getTemplate() {
     if (USE_PG) {
       const r = await pool.query(`

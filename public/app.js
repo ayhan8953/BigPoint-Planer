@@ -4,6 +4,7 @@ const App = (() => {
   let empWeek = getMonday(new Date());
   let adminWeek = getMonday(new Date());
   let employees = [];
+  let pinModalTargetId = null;
 
   const DAYS      = ['Mo','Di','Mi','Do','Fr','Sa','So'];
   const DAYS_FULL = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
@@ -202,13 +203,14 @@ const App = (() => {
 
   // ─── Admin: Tabs ──────────────────────────────────────────────────────────
   function adminTab(tab) {
-    const tabs = ['calendar', 'template', 'vacations'];
+    const tabs = ['calendar', 'template', 'vacations', 'employees'];
     document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById(`admin-tab-${tab}`).classList.add('active');
     if (tab === 'calendar')  loadAdminCalendar();
     if (tab === 'template')  loadTemplateEditor();
     if (tab === 'vacations') loadAdminVacations();
+    if (tab === 'employees') loadEmpList();
   }
 
   // ─── Admin: Calendar ──────────────────────────────────────────────────────
@@ -346,6 +348,80 @@ const App = (() => {
     } catch { el.innerHTML = '<div class="empty">Fehler beim Laden.</div>'; }
   }
 
+  // ─── Admin: Employees ─────────────────────────────────────────────────────
+  async function loadEmpList() {
+    const el = document.getElementById('emp-list');
+    el.innerHTML = '<div class="loading">Lade...</div>';
+    try {
+      const list = await (await fetch('/api/employees/full')).json();
+      if (!list.length) { el.innerHTML = '<div class="empty">Keine Mitarbeiter.</div>'; return; }
+      el.innerHTML = list.map(e => `
+        <div class="emp-row">
+          <span class="emp-name">${esc(e.name)}</span>
+          <span class="emp-pin">PIN: ${esc(e.pin)}</span>
+          <button class="btn btn-secondary btn-sm" onclick="App.openPinModal(${e.id},'${esc(e.name)}')">&#9999;&#65039; PIN aendern</button>
+        </div>`).join('');
+    } catch { el.innerHTML = '<div class="empty">Fehler beim Laden.</div>'; }
+  }
+
+  function showAddEmpForm() {
+    document.getElementById('add-emp-form').style.display = 'block';
+    document.getElementById('show-add-emp-btn').style.display = 'none';
+    document.getElementById('new-emp-name').value = '';
+    document.getElementById('new-emp-pin').value = '';
+  }
+
+  function hideAddEmpForm() {
+    document.getElementById('add-emp-form').style.display = 'none';
+    document.getElementById('show-add-emp-btn').style.display = 'block';
+  }
+
+  async function addEmployee() {
+    const name = document.getElementById('new-emp-name').value.trim();
+    const pin  = document.getElementById('new-emp-pin').value.trim();
+    if (!name) { alert('Bitte Namen eingeben.'); return; }
+    if (!/^\d{4}$/.test(pin)) { alert('PIN muss genau 4 Ziffern sein.'); return; }
+    try {
+      const res = await fetch('/api/employees', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, pin })
+      });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      hideAddEmpForm();
+      employees = await (await fetch('/api/employees')).json();
+      loadEmpList();
+    } catch { alert('Fehler beim Hinzufuegen.'); }
+  }
+
+  function openPinModal(id, name) {
+    pinModalTargetId = id;
+    document.getElementById('pin-modal-title').textContent = `PIN aendern — ${name}`;
+    document.getElementById('pin-modal-input').value = '';
+    document.getElementById('pin-modal').classList.add('open');
+    setTimeout(() => document.getElementById('pin-modal-input').focus(), 100);
+  }
+
+  function closePinModal() {
+    document.getElementById('pin-modal').classList.remove('open');
+    pinModalTargetId = null;
+  }
+
+  async function savePin() {
+    const pin = document.getElementById('pin-modal-input').value.trim();
+    if (!/^\d{4}$/.test(pin)) { alert('PIN muss genau 4 Ziffern sein.'); return; }
+    try {
+      const res = await fetch(`/api/employees/${pinModalTargetId}/pin`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin })
+      });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      closePinModal();
+      loadEmpList();
+    } catch { alert('Fehler beim Aendern.'); }
+  }
+
   async function reviewVacation(id, status) {
     const label = status === 'approved' ? 'genehmigen' : 'ablehnen';
     if (!confirm(`Antrag wirklich ${label}?`)) return;
@@ -379,6 +455,8 @@ const App = (() => {
     pinPress, pinDelete, logout, showScreen,
     prevWeek, nextWeek, showVacationForm, submitVacation,
     adminPrevWeek, adminNextWeek, adminTab,
-    saveTemplate, loadAdminVacations, reviewVacation
+    saveTemplate, loadAdminVacations, reviewVacation,
+    showAddEmpForm, hideAddEmpForm, addEmployee,
+    openPinModal, closePinModal, savePin
   };
 })();

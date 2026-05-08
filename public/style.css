@@ -133,3 +133,15 @@ header {
 /* Filter */
 .filter-row { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; }
 .filter-label { font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+
+/* Employee row */
+.emp-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0.2rem; border-bottom: 1px solid var(--border); }
+.emp-row:last-child { border-bottom: none; }
+.emp-name { flex: 1; font-weight: 600; font-size: 0.92rem; }
+.emp-pin  { font-size: 0.85rem; color: var(--muted); min-width: 50px; font-family: monospace; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal-box { background: var(--surface); border-radius: var(--radius); padding: 1.4rem; width: 90%; max-width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+.modal-box h3 { font-size: 1rem; margin-bottom: 0.2rem; }

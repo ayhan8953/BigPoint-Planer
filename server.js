@@ -23,6 +23,38 @@ app.get('/api/employees', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/employees/full', async (req, res) => {
+  try { res.json(await db.getEmployeesWithPins()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/employees', async (req, res) => {
+  try {
+    const { name, pin } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Name erforderlich' });
+    if (!/^\d{4}$/.test(pin)) return res.status(400).json({ error: 'PIN muss 4 Ziffern sein' });
+    const all = await db.getEmployees();
+    if (all.find(e => e.name.toLowerCase() === name.trim().toLowerCase()))
+      return res.status(400).json({ error: 'Mitarbeiter existiert bereits' });
+    if (await db.isPinTaken(pin))
+      return res.status(400).json({ error: 'Diese PIN ist bereits vergeben' });
+    const emp = await db.addEmployee(name.trim(), pin);
+    res.json(emp);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/employees/:id/pin', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { pin } = req.body;
+    if (!/^\d{4}$/.test(pin)) return res.status(400).json({ error: 'PIN muss 4 Ziffern sein' });
+    if (await db.isPinTaken(pin, id))
+      return res.status(400).json({ error: 'Diese PIN ist bereits vergeben' });
+    await db.updateEmployeePin(id, pin);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/template', async (req, res) => {
   try { res.json(await db.getTemplate()); }
   catch (e) { res.status(500).json({ error: e.message }); }

@@ -103,6 +103,7 @@
       <button class="tab active" onclick="App.adminTab('calendar')">&#128197; Kalender</button>
       <button class="tab" onclick="App.adminTab('template')">&#9881; Vorlage</button>
       <button class="tab" onclick="App.adminTab('vacations')">&#127958; Antraege</button>
+      <button class="tab" onclick="App.adminTab('employees')">&#128100; Mitarbeiter</button>
     </div>
 
     <!-- Calendar Tab -->
@@ -152,7 +153,43 @@
         <div id="admin-vacations" class="vacation-list"></div>
       </div>
     </div>
+    <!-- Employees Tab -->
+    <div id="admin-tab-employees" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h3>Mitarbeiter verwalten</h3>
+        </div>
+        <div id="emp-list" class="vacation-list"></div>
+        <div id="add-emp-form" style="display:none; margin-top:1rem">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="new-emp-name" class="form-input" placeholder="Vorname">
+          </div>
+          <div class="form-group">
+            <label>PIN (4 Ziffern)</label>
+            <input type="text" id="new-emp-pin" class="form-input" maxlength="4" inputmode="numeric" placeholder="z.B. 4567">
+          </div>
+          <div style="display:flex; gap:0.6rem">
+            <button class="btn btn-secondary btn-sm" onclick="App.hideAddEmpForm()">Abbrechen</button>
+            <button class="btn btn-primary btn-sm" onclick="App.addEmployee()">Speichern</button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" id="show-add-emp-btn" style="margin-top:1rem" onclick="App.showAddEmpForm()">+ Mitarbeiter hinzufuegen</button>
+      </div>
+    </div>
   </section>
+
+  <!-- PIN AENDERN MODAL -->
+  <div id="pin-modal" class="modal-overlay" onclick="App.closePinModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <h3 id="pin-modal-title">PIN aendern</h3>
+      <input type="text" id="pin-modal-input" class="form-input" maxlength="4" inputmode="numeric" placeholder="Neuer PIN (4 Ziffern)" style="margin:0.8rem 0">
+      <div style="display:flex; gap:0.6rem; margin-top:0.4rem">
+        <button class="btn btn-secondary btn-sm" onclick="App.closePinModal()">Abbrechen</button>
+        <button class="btn btn-primary btn-sm" onclick="App.savePin()">Speichern</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
