@@ -33,9 +33,8 @@ header {
 .screen.active { display: block; }
 
 /* PIN */
-.login-logo { width: 170px; height: 170px; object-fit: contain; filter: drop-shadow(0 6px 16px rgba(196,18,23,0.25)); display: block; margin: 0 auto; }
-.pin-wrapper { display: flex; flex-direction: column; align-items: center; padding-top: 1rem; gap: 0.8rem; }
-.pin-wrapper h2 { font-size: 1.4rem; }
+.login-logo { width: min(300px, 78vw); height: min(300px, 78vw); object-fit: contain; filter: drop-shadow(0 8px 20px rgba(196,18,23,0.28)); display: block; margin: 0 auto; }
+.pin-wrapper { display: flex; flex-direction: column; align-items: center; padding-top: 0.8rem; gap: 1rem; }
 .pin-dots { display: flex; gap: 1rem; }
 .dot { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--primary); transition: background 0.1s; }
 .dot.filled { background: var(--primary); }
