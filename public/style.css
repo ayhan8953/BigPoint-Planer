@@ -33,7 +33,7 @@ header {
 .screen.active { display: block; }
 
 /* PIN */
-.login-logo { width: min(300px, 78vw); height: min(300px, 78vw); object-fit: contain; filter: drop-shadow(0 8px 20px rgba(196,18,23,0.28)); display: block; margin: 0 auto; }
+.login-logo { width: min(380px, 88vw); height: min(380px, 88vw); object-fit: contain; filter: drop-shadow(0 8px 24px rgba(196,18,23,0.3)); display: block; margin: 0 auto; }
 .pin-wrapper { display: flex; flex-direction: column; align-items: center; padding-top: 0.8rem; gap: 1rem; }
 .pin-dots { display: flex; gap: 1rem; }
 .dot { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--primary); transition: background 0.1s; }
