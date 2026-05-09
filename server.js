@@ -55,16 +55,19 @@ app.put('/api/employees/:id/pin', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/template', async (req, res) => {
-  try { res.json(await db.getTemplate()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+app.get('/api/plan', async (req, res) => {
+  try {
+    const { week } = req.query;
+    if (!week) return res.status(400).json({ error: 'week fehlt' });
+    res.json(await db.getWeekPlan(week));
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/template', async (req, res) => {
+app.post('/api/plan', async (req, res) => {
   try {
-    const { entries } = req.body;
-    if (!Array.isArray(entries)) return res.status(400).json({ error: 'Ungueltige Daten' });
-    await db.saveTemplate(entries);
+    const { week, entries } = req.body;
+    if (!week || !Array.isArray(entries)) return res.status(400).json({ error: 'Ungueltige Daten' });
+    await db.saveWeekPlan(week, entries);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -103,10 +106,10 @@ app.post('/api/vacations', async (req, res) => {
 app.put('/api/vacations/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { status, admin_id } = req.body;
+    const { status, admin_id, admin_note } = req.body;
     if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Ungueltiger Status' });
     if (!admin_id) return res.status(400).json({ error: 'admin_id fehlt' });
-    await db.reviewVacation(id, status, admin_id);
+    await db.reviewVacation(id, status, admin_id, admin_note);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

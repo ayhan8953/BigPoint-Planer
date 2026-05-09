@@ -66,7 +66,8 @@ header {
 .schedule-day { font-weight: 700; min-width: 28px; font-size: 0.88rem; color: var(--muted); }
 .schedule-date { color: var(--muted); font-size: 0.82rem; min-width: 55px; }
 .schedule-time { font-size: 0.92rem; font-weight: 500; }
-.schedule-time.off { color: var(--border); }
+.schedule-time.off  { color: var(--border); }
+.schedule-time.free { color: var(--muted); font-weight: 600; }
 .schedule-time.vacation { color: var(--success); font-weight: 600; }
 .today-row { background: #ECFDF5 !important; outline: 1.5px solid #6EE7B7; }
 .today-badge { margin-left: auto; font-size: 0.75rem; font-weight: 700; color: var(--success); }
@@ -102,8 +103,9 @@ header {
 .cal-table td, .tmpl-table td { padding: 0.45rem 0.5rem; text-align: center; border: 1px solid var(--border); vertical-align: middle; }
 .cal-table .day-col { font-weight: 600; text-align: left; white-space: nowrap; background: var(--bg); padding-left: 0.7rem; }
 .cal-today td { background: #ECFDF5; }
-.cell-time { font-weight: 600; color: var(--text); }
-.cell-off { color: #CBD5E1; }
+.cell-time    { font-weight: 600; color: var(--text); }
+.cell-off     { color: #CBD5E1; }
+.cell-free    { color: var(--muted); font-weight: 600; font-size: 0.78rem; }
 .cell-vacation { color: var(--success); font-weight: 700; }
 
 /* Template editor */
@@ -140,8 +142,17 @@ header {
 .emp-name { flex: 1; font-weight: 600; font-size: 0.92rem; }
 .emp-pin  { font-size: 0.85rem; color: var(--muted); min-width: 50px; font-family: monospace; }
 
+/* Frei toggle in plan editor */
+.plan-cell { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.frei-check { font-size: 0.72rem; color: var(--muted); display: flex; align-items: center; gap: 3px; cursor: pointer; margin-top: 2px; }
+.time-disabled input { opacity: 0.3; }
+.time-disabled { opacity: 0.4; }
+
+/* Admin note */
+.admin-note { font-size: 0.8rem; color: var(--primary-dark); margin-top: 0.3rem; background: #F0FDFA; border-radius: 6px; padding: 0.25rem 0.5rem; }
+
 /* Modal */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
 .modal-overlay.open { display: flex; }
-.modal-box { background: var(--surface); border-radius: var(--radius); padding: 1.4rem; width: 90%; max-width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+.modal-box { background: var(--surface); border-radius: var(--radius); padding: 1.4rem; width: 90%; max-width: 340px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
 .modal-box h3 { font-size: 1rem; margin-bottom: 0.2rem; }

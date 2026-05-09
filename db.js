@@ -7,7 +7,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const FILES = {
   admins:    path.join(DATA_DIR, 'admins.json'),
   employees: path.join(DATA_DIR, 'employees.json'),
-  templates: path.join(DATA_DIR, 'templates.json'),
+  weekplans: path.join(DATA_DIR, 'weekplans.json'),
   vacations: path.join(DATA_DIR, 'vacations.json'),
 };
 
@@ -18,7 +18,6 @@ function rj(file, fallback) {
 function wj(file, data) { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); }
 function nextId(arr) { return arr.length === 0 ? 1 : Math.max(...arr.map(x => x.id)) + 1; }
 
-// Parse YYYY-MM-DD safely from DB date values
 function isoDate(d) {
   if (!d) return null;
   if (typeof d === 'string') return d.slice(0, 10);
@@ -28,7 +27,7 @@ function isoDate(d) {
 let pool;
 if (USE_PG) {
   const { Pool, types } = require('pg');
-  types.setTypeParser(1082, v => v); // Return DATE as plain string
+  types.setTypeParser(1082, v => v);
   pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 }
 
@@ -46,13 +45,15 @@ const db = {
           name TEXT NOT NULL UNIQUE,
           pin TEXT NOT NULL
         );
-        CREATE TABLE IF NOT EXISTS schedule_templates (
+        CREATE TABLE IF NOT EXISTS week_plans (
           id SERIAL PRIMARY KEY,
           employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+          week_monday DATE NOT NULL,
           day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
-          start_time TIME NOT NULL,
-          end_time TIME NOT NULL,
-          UNIQUE(employee_id, day_of_week)
+          start_time TIME,
+          end_time TIME,
+          is_free BOOLEAN NOT NULL DEFAULT FALSE,
+          UNIQUE(employee_id, week_monday, day_of_week)
         );
         CREATE TABLE IF NOT EXISTS vacation_requests (
           id SERIAL PRIMARY KEY,
@@ -63,18 +64,21 @@ const db = {
           status TEXT NOT NULL DEFAULT 'pending',
           reviewed_by INTEGER REFERENCES admins(id),
           reviewed_at TIMESTAMPTZ,
+          admin_note TEXT,
           created_at TIMESTAMPTZ DEFAULT NOW()
         );
       `);
+      // Migrate: add admin_note if missing (for existing DBs)
+      await pool.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS admin_note TEXT;`).catch(() => {});
       await pool.query(`
         INSERT INTO admins (id, name, pin) VALUES (1,'Eyup','0000'),(2,'Ayhan','1627') ON CONFLICT (id) DO NOTHING;
         INSERT INTO employees (name, pin) VALUES ('Shafiq','1111'),('Sadat','2222'),('Mohammed','3333') ON CONFLICT (name) DO NOTHING;
       `);
     } else {
       if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-      if (!fs.existsSync(FILES.admins))    wj(FILES.admins, [{ id: 1, name: 'Eyup', pin: '0000' }, { id: 2, name: 'Ayhan', pin: '1627' }]);
+      if (!fs.existsSync(FILES.admins))    wj(FILES.admins,    [{ id: 1, name: 'Eyup', pin: '0000' }, { id: 2, name: 'Ayhan', pin: '1627' }]);
       if (!fs.existsSync(FILES.employees)) wj(FILES.employees, [{ id: 1, name: 'Shafiq', pin: '1111' }, { id: 2, name: 'Sadat', pin: '2222' }, { id: 3, name: 'Mohammed', pin: '3333' }]);
-      if (!fs.existsSync(FILES.templates)) wj(FILES.templates, []);
+      if (!fs.existsSync(FILES.weekplans)) wj(FILES.weekplans, []);
       if (!fs.existsSync(FILES.vacations)) wj(FILES.vacations, []);
     }
   },
@@ -140,37 +144,48 @@ const db = {
     if (i >= 0) { emps[i].pin = pin; wj(FILES.employees, emps); }
   },
 
-  async getTemplate() {
+  async getWeekPlan(mondayStr) {
     if (USE_PG) {
       const r = await pool.query(`
-        SELECT st.employee_id, e.name,
-               st.day_of_week,
-               to_char(st.start_time,'HH24:MI') as start_time,
-               to_char(st.end_time,'HH24:MI') as end_time
-        FROM schedule_templates st JOIN employees e ON st.employee_id=e.id
-        ORDER BY e.name, st.day_of_week
-      `);
+        SELECT wp.employee_id, e.name, wp.day_of_week,
+               to_char(wp.start_time,'HH24:MI') as start_time,
+               to_char(wp.end_time,'HH24:MI') as end_time,
+               wp.is_free
+        FROM week_plans wp JOIN employees e ON wp.employee_id=e.id
+        WHERE wp.week_monday=$1
+        ORDER BY e.name, wp.day_of_week
+      `, [mondayStr]);
       return r.rows;
     }
-    return rj(FILES.templates, []);
+    return rj(FILES.weekplans, []).filter(e => e.week_monday === mondayStr);
   },
 
-  async saveTemplate(entries) {
+  async saveWeekPlan(mondayStr, entries) {
     if (USE_PG) {
       for (const e of entries) {
-        if (e.start_time && e.end_time) {
+        if (e.is_free) {
           await pool.query(`
-            INSERT INTO schedule_templates (employee_id, day_of_week, start_time, end_time)
-            VALUES ($1,$2,$3,$4)
-            ON CONFLICT (employee_id, day_of_week) DO UPDATE SET start_time=$3, end_time=$4
-          `, [e.employee_id, e.day_of_week, e.start_time, e.end_time]);
+            INSERT INTO week_plans (employee_id, week_monday, day_of_week, start_time, end_time, is_free)
+            VALUES ($1,$2,$3,NULL,NULL,TRUE)
+            ON CONFLICT (employee_id, week_monday, day_of_week) DO UPDATE SET start_time=NULL, end_time=NULL, is_free=TRUE
+          `, [e.employee_id, mondayStr, e.day_of_week]);
+        } else if (e.start_time && e.end_time) {
+          await pool.query(`
+            INSERT INTO week_plans (employee_id, week_monday, day_of_week, start_time, end_time, is_free)
+            VALUES ($1,$2,$3,$4,$5,FALSE)
+            ON CONFLICT (employee_id, week_monday, day_of_week) DO UPDATE SET start_time=$4, end_time=$5, is_free=FALSE
+          `, [e.employee_id, mondayStr, e.day_of_week, e.start_time, e.end_time]);
         } else {
-          await pool.query('DELETE FROM schedule_templates WHERE employee_id=$1 AND day_of_week=$2', [e.employee_id, e.day_of_week]);
+          await pool.query('DELETE FROM week_plans WHERE employee_id=$1 AND week_monday=$2 AND day_of_week=$3', [e.employee_id, mondayStr, e.day_of_week]);
         }
       }
       return;
     }
-    wj(FILES.templates, entries.filter(e => e.start_time && e.end_time));
+    const kept = rj(FILES.weekplans, []).filter(e => e.week_monday !== mondayStr);
+    const newEntries = entries
+      .filter(e => e.is_free || (e.start_time && e.end_time))
+      .map(e => ({ ...e, week_monday: mondayStr }));
+    wj(FILES.weekplans, [...kept, ...newEntries]);
   },
 
   async getWeekSchedule(mondayStr) {
@@ -183,36 +198,42 @@ const db = {
 
     if (USE_PG) {
       const emps = await pool.query('SELECT id, name FROM employees ORDER BY name');
-      const tmpl = await pool.query('SELECT employee_id, day_of_week, to_char(start_time,\'HH24:MI\') as start_time, to_char(end_time,\'HH24:MI\') as end_time FROM schedule_templates');
+      const plans = await pool.query(`
+        SELECT employee_id, day_of_week,
+               to_char(start_time,'HH24:MI') as start_time,
+               to_char(end_time,'HH24:MI') as end_time,
+               is_free
+        FROM week_plans WHERE week_monday=$1`, [mondayStr]);
       const vacs = await pool.query(
         `SELECT employee_id, start_date, end_date FROM vacation_requests WHERE status='approved' AND start_date <= $1 AND end_date >= $2`,
         [days[6], days[0]]
       );
-
       return days.map((date, i) => ({
         date,
         employees: emps.rows.map(emp => {
           const onVac = vacs.rows.some(v => v.employee_id === emp.id && isoDate(v.start_date) <= date && isoDate(v.end_date) >= date);
           if (onVac) return { employee_id: emp.id, name: emp.name, is_vacation: true };
-          const t = tmpl.rows.find(t => t.employee_id === emp.id && t.day_of_week === i);
-          if (!t) return { employee_id: emp.id, name: emp.name, is_off: true };
-          return { employee_id: emp.id, name: emp.name, start_time: t.start_time, end_time: t.end_time };
+          const p = plans.rows.find(p => p.employee_id === emp.id && p.day_of_week === i);
+          if (!p) return { employee_id: emp.id, name: emp.name, is_off: true };
+          if (p.is_free) return { employee_id: emp.id, name: emp.name, is_free: true };
+          return { employee_id: emp.id, name: emp.name, start_time: p.start_time, end_time: p.end_time };
         })
       }));
     }
 
     const emps = rj(FILES.employees, []).sort((a, b) => a.name.localeCompare(b.name));
-    const tmpl = rj(FILES.templates, []);
-    const vacs = rj(FILES.vacations, []).filter(v => v.status === 'approved');
+    const plans = rj(FILES.weekplans, []).filter(p => p.week_monday === mondayStr);
+    const vacs  = rj(FILES.vacations, []).filter(v => v.status === 'approved');
 
     return days.map((date, i) => ({
       date,
       employees: emps.map(emp => {
         const onVac = vacs.some(v => v.employee_id === emp.id && v.start_date <= date && v.end_date >= date);
         if (onVac) return { employee_id: emp.id, name: emp.name, is_vacation: true };
-        const t = tmpl.find(t => t.employee_id === emp.id && t.day_of_week === i);
-        if (!t || !t.start_time) return { employee_id: emp.id, name: emp.name, is_off: true };
-        return { employee_id: emp.id, name: emp.name, start_time: t.start_time, end_time: t.end_time };
+        const p = plans.find(p => p.employee_id === emp.id && p.day_of_week === i);
+        if (!p) return { employee_id: emp.id, name: emp.name, is_off: true };
+        if (p.is_free) return { employee_id: emp.id, name: emp.name, is_free: true };
+        return { employee_id: emp.id, name: emp.name, start_time: p.start_time, end_time: p.end_time };
       })
     }));
   },
@@ -232,7 +253,7 @@ const db = {
       return r.rows.map(v => ({ ...v, start_date: isoDate(v.start_date), end_date: isoDate(v.end_date) }));
     }
     const vacations = rj(FILES.vacations, []);
-    const emps = rj(FILES.employees, []);
+    const emps   = rj(FILES.employees, []);
     const admins = rj(FILES.admins, []);
     return (employee_id ? vacations.filter(v => v.employee_id === employee_id) : vacations)
       .map(v => ({
@@ -252,20 +273,25 @@ const db = {
       return r.rows[0];
     }
     const vacations = rj(FILES.vacations, []);
-    const v = { id: nextId(vacations), employee_id, start_date, end_date, note: note || null, status: 'pending', reviewed_by: null, reviewed_at: null, created_at: new Date().toISOString() };
-    vacations.push(v);
-    wj(FILES.vacations, vacations);
+    const v = { id: nextId(vacations), employee_id, start_date, end_date, note: note || null, status: 'pending', reviewed_by: null, reviewed_at: null, admin_note: null, created_at: new Date().toISOString() };
+    vacations.push(v); wj(FILES.vacations, vacations);
     return v;
   },
 
-  async reviewVacation(id, status, admin_id) {
+  async reviewVacation(id, status, admin_id, admin_note) {
     if (USE_PG) {
-      await pool.query('UPDATE vacation_requests SET status=$1, reviewed_by=$2, reviewed_at=NOW() WHERE id=$3', [status, admin_id, id]);
+      await pool.query(
+        'UPDATE vacation_requests SET status=$1, reviewed_by=$2, reviewed_at=NOW(), admin_note=$4 WHERE id=$3',
+        [status, admin_id, id, admin_note || null]
+      );
       return;
     }
     const vacations = rj(FILES.vacations, []);
     const i = vacations.findIndex(v => v.id === id);
-    if (i >= 0) { vacations[i] = { ...vacations[i], status, reviewed_by: admin_id, reviewed_at: new Date().toISOString() }; wj(FILES.vacations, vacations); }
+    if (i >= 0) {
+      vacations[i] = { ...vacations[i], status, reviewed_by: admin_id, reviewed_at: new Date().toISOString(), admin_note: admin_note || null };
+      wj(FILES.vacations, vacations);
+    }
   }
 };
 

@@ -10,7 +10,7 @@
 
   <header>
     <div class="header-inner">
-      <span class="logo">📅 BigPoint Planer</span>
+      <span class="logo">&#128197; BigPoint Planer</span>
       <span id="header-time" class="header-time"></span>
     </div>
   </header>
@@ -23,7 +23,7 @@
         <span class="dot"></span><span class="dot"></span>
         <span class="dot"></span><span class="dot"></span>
       </div>
-      <div id="pin-error" class="pin-error" style="visibility:hidden">Falsche PIN — bitte erneut versuchen</div>
+      <div id="pin-error" class="pin-error" style="visibility:hidden">Falsche PIN &mdash; bitte erneut versuchen</div>
       <div class="numpad">
         <button class="num-btn" onclick="App.pinPress('1')">1</button>
         <button class="num-btn" onclick="App.pinPress('2')">2</button>
@@ -36,7 +36,7 @@
         <button class="num-btn" onclick="App.pinPress('9')">9</button>
         <button class="num-btn num-empty"></button>
         <button class="num-btn" onclick="App.pinPress('0')">0</button>
-        <button class="num-btn num-del" onclick="App.pinDelete()">⌫</button>
+        <button class="num-btn num-del" onclick="App.pinDelete()">&#9003;</button>
       </div>
     </div>
   </section>
@@ -47,7 +47,6 @@
       <span id="emp-greeting" class="page-title"></span>
       <button class="logout-btn" onclick="App.logout()">Abmelden</button>
     </div>
-
     <div class="card">
       <div class="card-header">
         <h3>Mein Arbeitsplan</h3>
@@ -59,10 +58,9 @@
       </div>
       <div id="emp-schedule" class="schedule-list"></div>
     </div>
-
     <div class="card">
       <div class="card-header">
-        <h3>Meine Ferienantraege</h3>
+        <h3>Meine Ferienantr&auml;ge</h3>
         <button class="btn btn-primary btn-sm" onclick="App.showVacationForm()">+ Ferien beantragen</button>
       </div>
       <div id="emp-vacations" class="vacation-list"></div>
@@ -72,7 +70,7 @@
   <!-- VACATION FORM SCREEN -->
   <section id="screen-vacation" class="screen">
     <div class="topbar">
-      <button class="back-link" onclick="App.showScreen('employee')">&#8592; Zurueck</button>
+      <button class="back-link" onclick="App.showScreen('employee')">&#8592; Zur&uuml;ck</button>
       <span class="page-title">Ferien beantragen</span>
     </div>
     <div class="card">
@@ -101,16 +99,16 @@
 
     <div class="tabs">
       <button class="tab active" onclick="App.adminTab('calendar')">&#128197; Kalender</button>
-      <button class="tab" onclick="App.adminTab('template')">&#9881; Vorlage</button>
-      <button class="tab" onclick="App.adminTab('vacations')">&#127958; Antraege</button>
+      <button class="tab" onclick="App.adminTab('plan')">&#9998; Wochenplan</button>
+      <button class="tab" onclick="App.adminTab('vacations')">&#127958; Antr&auml;ge</button>
       <button class="tab" onclick="App.adminTab('employees')">&#128100; Mitarbeiter</button>
     </div>
 
-    <!-- Calendar Tab -->
+    <!-- Kalender Tab -->
     <div id="admin-tab-calendar" class="tab-content active">
       <div class="card">
         <div class="card-header">
-          <h3>Wochenplan</h3>
+          <h3>Wochenkalender</h3>
           <div class="week-nav">
             <button class="week-btn" onclick="App.adminPrevWeek()">&#8249;</button>
             <span id="admin-week-label" class="week-label"></span>
@@ -121,44 +119,42 @@
       </div>
     </div>
 
-    <!-- Template Tab -->
-    <div id="admin-tab-template" class="tab-content">
+    <!-- Wochenplan Tab -->
+    <div id="admin-tab-plan" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h3>Wochenvorlage bearbeiten</h3>
+          <h3>Wochenplan bearbeiten</h3>
+          <div class="week-nav">
+            <button class="week-btn" onclick="App.planPrevWeek()">&#8249;</button>
+            <span id="plan-week-label" class="week-label"></span>
+            <button class="week-btn" onclick="App.planNextWeek()">&#8250;</button>
+          </div>
         </div>
-        <p class="hint">Beide Felder leer lassen = freier Tag</p>
-        <div id="template-editor" class="table-wrapper"></div>
-        <button class="btn btn-primary btn-full" style="margin-top:1.2rem" onclick="App.saveTemplate()">Vorlage speichern</button>
+        <p class="hint">Zeiten eintragen = Arbeitstag &nbsp;|&nbsp; &quot;Frei&quot; ankreuzen = freier Tag &nbsp;|&nbsp; Alles leer = nicht geplant</p>
+        <div id="plan-editor" class="table-wrapper"></div>
+        <button class="btn btn-primary btn-full" style="margin-top:1.2rem" onclick="App.savePlan()">Diese Woche speichern</button>
       </div>
     </div>
 
-    <!-- Vacations Tab -->
+    <!-- Antr&auml;ge Tab -->
     <div id="admin-tab-vacations" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h3>Ferienantraege</h3>
+          <h3>Ferienantr&auml;ge</h3>
           <div class="filter-row">
-            <label class="filter-label">
-              <input type="checkbox" id="filter-pending" checked onchange="App.loadAdminVacations()"> Ausstehend
-            </label>
-            <label class="filter-label">
-              <input type="checkbox" id="filter-approved" checked onchange="App.loadAdminVacations()"> Genehmigt
-            </label>
-            <label class="filter-label">
-              <input type="checkbox" id="filter-rejected" onchange="App.loadAdminVacations()"> Abgelehnt
-            </label>
+            <label class="filter-label"><input type="checkbox" id="filter-pending"  checked onchange="App.loadAdminVacations()"> Ausstehend</label>
+            <label class="filter-label"><input type="checkbox" id="filter-approved" checked onchange="App.loadAdminVacations()"> Genehmigt</label>
+            <label class="filter-label"><input type="checkbox" id="filter-rejected"       onchange="App.loadAdminVacations()"> Abgelehnt</label>
           </div>
         </div>
         <div id="admin-vacations" class="vacation-list"></div>
       </div>
     </div>
-    <!-- Employees Tab -->
+
+    <!-- Mitarbeiter Tab -->
     <div id="admin-tab-employees" class="tab-content">
       <div class="card">
-        <div class="card-header">
-          <h3>Mitarbeiter verwalten</h3>
-        </div>
+        <div class="card-header"><h3>Mitarbeiter verwalten</h3></div>
         <div id="emp-list" class="vacation-list"></div>
         <div id="add-emp-form" style="display:none; margin-top:1rem">
           <div class="form-group">
@@ -174,19 +170,33 @@
             <button class="btn btn-primary btn-sm" onclick="App.addEmployee()">Speichern</button>
           </div>
         </div>
-        <button class="btn btn-primary btn-full" id="show-add-emp-btn" style="margin-top:1rem" onclick="App.showAddEmpForm()">+ Mitarbeiter hinzufuegen</button>
+        <button class="btn btn-primary btn-full" id="show-add-emp-btn" style="margin-top:1rem" onclick="App.showAddEmpForm()">+ Mitarbeiter hinzuf&uuml;gen</button>
       </div>
     </div>
   </section>
 
-  <!-- PIN AENDERN MODAL -->
+  <!-- PIN MODAL -->
   <div id="pin-modal" class="modal-overlay" onclick="App.closePinModal()">
     <div class="modal-box" onclick="event.stopPropagation()">
-      <h3 id="pin-modal-title">PIN aendern</h3>
+      <h3 id="pin-modal-title">PIN &auml;ndern</h3>
       <input type="text" id="pin-modal-input" class="form-input" maxlength="4" inputmode="numeric" placeholder="Neuer PIN (4 Ziffern)" style="margin:0.8rem 0">
-      <div style="display:flex; gap:0.6rem; margin-top:0.4rem">
+      <div style="display:flex; gap:0.6rem">
         <button class="btn btn-secondary btn-sm" onclick="App.closePinModal()">Abbrechen</button>
         <button class="btn btn-primary btn-sm" onclick="App.savePin()">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW MODAL -->
+  <div id="review-modal" class="modal-overlay" onclick="App.closeReviewModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <h3 id="review-modal-title">Antrag bearbeiten</h3>
+      <p id="review-modal-info" class="hint" style="margin-bottom:0.6rem"></p>
+      <label style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:0.3rem">Notiz f&uuml;r Mitarbeiter (optional)</label>
+      <textarea id="review-note" class="form-input form-textarea" placeholder="z.B. Bitte noch X beachten..." style="min-height:70px"></textarea>
+      <div style="display:flex; gap:0.6rem; margin-top:0.8rem">
+        <button class="btn btn-secondary btn-sm" onclick="App.closeReviewModal()">Abbrechen</button>
+        <button id="review-confirm-btn" class="btn btn-sm" onclick="App.confirmReview()">Best&auml;tigen</button>
       </div>
     </div>
   </div>
