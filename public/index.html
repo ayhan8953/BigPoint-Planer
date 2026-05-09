@@ -66,6 +66,12 @@
       </div>
       <div id="emp-vacations" class="vacation-list"></div>
     </div>
+    <div class="card">
+      <div class="card-header">
+        <h3>&#128226; Mitteilungen</h3>
+      </div>
+      <div id="emp-announcements" class="vacation-list"></div>
+    </div>
   </section>
 
   <!-- VACATION FORM SCREEN -->
@@ -103,6 +109,7 @@
       <button class="tab" onclick="App.adminTab('plan')">&#9998; Wochenplan</button>
       <button class="tab" onclick="App.adminTab('vacations')">&#127958; Antr&auml;ge</button>
       <button class="tab" onclick="App.adminTab('employees')">&#128100; Mitarbeiter</button>
+      <button class="tab" onclick="App.adminTab('announcements')">&#128226; Mitteilungen</button>
     </div>
 
     <!-- Kalender Tab -->
@@ -175,6 +182,41 @@
       </div>
     </div>
   </section>
+
+    <!-- Mitteilungen Tab -->
+    <div id="admin-tab-announcements" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>&#128226; Mitteilungen verwalten</h3></div>
+        <div class="form-group">
+          <label>Titel</label>
+          <input type="text" id="ann-title" class="form-input" placeholder="z.B. Wichtige Information">
+        </div>
+        <div class="form-group">
+          <label>Text (optional)</label>
+          <textarea id="ann-content" class="form-input form-textarea" placeholder="Details..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Foto (optional)</label>
+          <input type="file" id="ann-photo" accept="image/*" class="form-input" style="padding:0.4rem">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="App.createAnnouncement()">&#128226; Mitteilung senden</button>
+        <div id="ann-list" class="vacation-list" style="margin-top:1.2rem"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- UNREAD POPUP -->
+  <div id="unread-popup" class="modal-overlay">
+    <div class="modal-box popup-box">
+      <div class="popup-icon">&#128226;</div>
+      <h3 id="unread-popup-title">Neue Mitteilung!</h3>
+      <p id="unread-popup-text" class="hint" style="margin:0.4rem 0 1rem"></p>
+      <div style="display:flex; gap:0.6rem">
+        <button class="btn btn-secondary btn-sm" onclick="App.dismissPopup()">Sp&auml;ter</button>
+        <button class="btn btn-primary btn-sm" onclick="App.goToAnnouncements()">Jetzt anschauen</button>
+      </div>
+    </div>
+  </div>
 
   <!-- PIN MODAL -->
   <div id="pin-modal" class="modal-overlay" onclick="App.closePinModal()">

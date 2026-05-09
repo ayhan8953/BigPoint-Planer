@@ -78,6 +78,8 @@ const App = (() => {
         showScreen('employee');
         loadEmpSchedule();
         loadEmpVacations();
+        loadEmpAnnouncements();
+        checkUnreadPopup();
       }
     } catch { showPinError(); }
   }
@@ -166,16 +168,57 @@ const App = (() => {
     } catch { alert('Fehler beim Stellen des Antrags.'); }
   }
 
+  // ─── Employee: Announcements ──────────────────────────────────────────────
+  async function loadEmpAnnouncements() {
+    const el = document.getElementById('emp-announcements');
+    if (!el) return;
+    el.innerHTML = '<div class="loading">Lade...</div>';
+    try {
+      const list = await (await fetch('/api/announcements')).json();
+      if (!list.length) { el.innerHTML = '<div class="empty">Keine Mitteilungen.</div>'; return; }
+      el.innerHTML = list.map(a => `
+        <div class="ann-item">
+          <div class="ann-header">
+            <span class="ann-title">${esc(a.title)}</span>
+            <span class="ann-meta">${esc(a.admin_name || '')} &mdash; ${fmtDateFull(a.created_at.slice(0,10))}</span>
+          </div>
+          ${a.content ? `<div class="ann-content">${esc(a.content)}</div>` : ''}
+          ${a.photo_data ? `<img class="ann-photo" src="${a.photo_data}" alt="Foto">` : ''}
+        </div>`).join('');
+      await fetch('/api/announcements/seen', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ employee_id: currentUser.id }) });
+    } catch { el.innerHTML = '<div class="empty">Fehler beim Laden.</div>'; }
+  }
+
+  async function checkUnreadPopup() {
+    try {
+      const r = await (await fetch(`/api/announcements/unread?employee_id=${currentUser.id}`)).json();
+      if (r.count > 0) {
+        document.getElementById('unread-popup-title').textContent = r.count === 1 ? 'Neue Mitteilung!' : `${r.count} neue Mitteilungen!`;
+        document.getElementById('unread-popup-text').textContent  = 'Die Admins haben eine Nachricht für dich hinterlassen.';
+        document.getElementById('unread-popup').classList.add('open');
+      }
+    } catch {}
+  }
+
+  function dismissPopup() { document.getElementById('unread-popup').classList.remove('open'); }
+
+  function goToAnnouncements() {
+    dismissPopup();
+    const el = document.getElementById('emp-announcements');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
+
   // ─── Admin: Tabs ──────────────────────────────────────────────────────────
   function adminTab(tab) {
-    const tabs = ['calendar','plan','vacations','employees'];
+    const tabs = ['calendar','plan','vacations','employees','announcements'];
     document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === tab));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById(`admin-tab-${tab}`).classList.add('active');
-    if (tab === 'calendar')  loadAdminCalendar();
-    if (tab === 'plan')      loadPlanEditor();
-    if (tab === 'vacations') loadAdminVacations();
-    if (tab === 'employees') loadEmpList();
+    if (tab === 'calendar')      loadAdminCalendar();
+    if (tab === 'plan')          loadPlanEditor();
+    if (tab === 'vacations')     loadAdminVacations();
+    if (tab === 'employees')     loadEmpList();
+    if (tab === 'announcements') loadAdminAnnouncements();
   }
 
   // ─── Admin: Calendar ──────────────────────────────────────────────────────
@@ -353,6 +396,63 @@ const App = (() => {
     } catch { alert('Fehler.'); }
   }
 
+  // ─── Admin: Announcements ─────────────────────────────────────────────────
+  async function loadAdminAnnouncements() {
+    const el = document.getElementById('ann-list');
+    el.innerHTML = '<div class="loading">Lade...</div>';
+    try {
+      const list = await (await fetch('/api/announcements')).json();
+      if (!list.length) { el.innerHTML = '<div class="empty">Noch keine Mitteilungen.</div>'; return; }
+      el.innerHTML = list.map(a => `
+        <div class="ann-item">
+          <div class="ann-header">
+            <span class="ann-title">${esc(a.title)}</span>
+            <button class="del-rec-btn" onclick="App.deleteAnnouncement(${a.id})" title="Löschen">🗑️</button>
+          </div>
+          <span class="ann-meta">${esc(a.admin_name || '')} &mdash; ${fmtDateFull(a.created_at.slice(0,10))}</span>
+          ${a.content ? `<div class="ann-content">${esc(a.content)}</div>` : ''}
+          ${a.photo_data ? `<img class="ann-photo" src="${a.photo_data}" alt="Foto">` : ''}
+        </div>`).join('');
+    } catch { el.innerHTML = '<div class="empty">Fehler.</div>'; }
+  }
+
+  async function createAnnouncement() {
+    const title   = document.getElementById('ann-title').value.trim();
+    const content = document.getElementById('ann-content').value.trim();
+    const file    = document.getElementById('ann-photo').files[0];
+    if (!title) { alert('Bitte Titel eingeben.'); return; }
+
+    let photo_data = null;
+    if (file) {
+      photo_data = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    try {
+      const res = await fetch('/api/announcements', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ admin_id: currentUser.adminId, title, content: content||null, photo_data })
+      });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      document.getElementById('ann-title').value   = '';
+      document.getElementById('ann-content').value = '';
+      document.getElementById('ann-photo').value   = '';
+      loadAdminAnnouncements();
+    } catch { alert('Fehler beim Senden.'); }
+  }
+
+  async function deleteAnnouncement(id) {
+    if (!confirm('Mitteilung wirklich löschen?')) return;
+    try {
+      await fetch(`/api/announcements/${id}`, { method:'DELETE' });
+      loadAdminAnnouncements();
+    } catch { alert('Fehler.'); }
+  }
+
   // ─── Admin: Employees ─────────────────────────────────────────────────────
   async function loadEmpList() {
     const el = document.getElementById('emp-list');
@@ -438,6 +538,8 @@ const App = (() => {
     planPrevWeek, planNextWeek, savePlan, toggleFrei,
     loadAdminVacations, reviewVacation, closeReviewModal, confirmReview,
     showAddEmpForm, hideAddEmpForm, addEmployee,
-    openPinModal, closePinModal, savePin
+    openPinModal, closePinModal, savePin,
+    createAnnouncement, deleteAnnouncement,
+    dismissPopup, goToAnnouncements
   };
 })();

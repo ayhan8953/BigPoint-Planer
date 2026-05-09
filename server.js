@@ -114,6 +114,43 @@ app.put('/api/vacations/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/announcements', async (req, res) => {
+  try { res.json(await db.getAnnouncements()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/announcements', async (req, res) => {
+  try {
+    const { admin_id, title, content, photo_data } = req.body;
+    if (!title?.trim()) return res.status(400).json({ error: 'Titel erforderlich' });
+    if (!admin_id) return res.status(400).json({ error: 'admin_id fehlt' });
+    const a = await db.createAnnouncement(admin_id, title.trim(), content, photo_data);
+    res.json(a);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/announcements/:id', async (req, res) => {
+  try { await db.deleteAnnouncement(parseInt(req.params.id)); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/announcements/unread', async (req, res) => {
+  try {
+    const { employee_id } = req.query;
+    if (!employee_id) return res.status(400).json({ error: 'employee_id fehlt' });
+    res.json({ count: await db.getUnreadCount(parseInt(employee_id)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/announcements/seen', async (req, res) => {
+  try {
+    const { employee_id } = req.body;
+    if (!employee_id) return res.status(400).json({ error: 'employee_id fehlt' });
+    await db.markSeen(employee_id);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 async function start() {
   await db.init();
   app.listen(PORT, '0.0.0.0', () => {

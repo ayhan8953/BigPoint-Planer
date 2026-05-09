@@ -33,7 +33,7 @@ header {
 .screen.active { display: block; }
 
 /* PIN */
-.login-logo { width: 130px; height: 130px; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(196,18,23,0.2)); }
+.login-logo { width: 170px; height: 170px; object-fit: contain; filter: drop-shadow(0 6px 16px rgba(196,18,23,0.25)); display: block; margin: 0 auto; }
 .pin-wrapper { display: flex; flex-direction: column; align-items: center; padding-top: 1rem; gap: 0.8rem; }
 .pin-wrapper h2 { font-size: 1.4rem; }
 .pin-dots { display: flex; gap: 1rem; }
@@ -143,6 +143,22 @@ header {
 .emp-row:last-child { border-bottom: none; }
 .emp-name { flex: 1; font-weight: 600; font-size: 0.92rem; }
 .emp-pin  { font-size: 0.85rem; color: var(--muted); min-width: 50px; font-family: monospace; }
+
+/* Announcements */
+.ann-item { border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.7rem; }
+.ann-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+.ann-title { font-weight: 700; font-size: 0.95rem; }
+.ann-meta { font-size: 0.76rem; color: var(--muted); margin: 0.2rem 0 0.4rem; display: block; }
+.ann-content { font-size: 0.88rem; color: var(--text); margin-top: 0.4rem; white-space: pre-wrap; }
+.ann-photo { width: 100%; max-width: 400px; border-radius: 8px; margin-top: 0.7rem; display: block; }
+.del-rec-btn { background: none; border: none; font-size: 1rem; cursor: pointer; opacity: 0.4; padding: 0.2rem; border-radius: 6px; }
+.del-rec-btn:hover { opacity: 1; background: #FEE2E2; }
+
+/* Unread popup */
+.popup-box { text-align: center; }
+.popup-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.popup-box h3 { font-size: 1.1rem; margin-bottom: 0.2rem; }
+.popup-box div[style] { justify-content: center; }
 
 /* Frei toggle in plan editor */
 .plan-cell { display: flex; flex-direction: column; gap: 3px; align-items: center; }

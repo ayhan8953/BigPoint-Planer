@@ -5,10 +5,12 @@ const USE_PG = !!process.env.DATABASE_URL;
 
 const DATA_DIR = path.join(__dirname, 'data');
 const FILES = {
-  admins:    path.join(DATA_DIR, 'admins.json'),
-  employees: path.join(DATA_DIR, 'employees.json'),
-  weekplans: path.join(DATA_DIR, 'weekplans.json'),
-  vacations: path.join(DATA_DIR, 'vacations.json'),
+  admins:        path.join(DATA_DIR, 'admins.json'),
+  employees:     path.join(DATA_DIR, 'employees.json'),
+  weekplans:     path.join(DATA_DIR, 'weekplans.json'),
+  vacations:     path.join(DATA_DIR, 'vacations.json'),
+  announcements: path.join(DATA_DIR, 'announcements.json'),
+  seen:          path.join(DATA_DIR, 'seen.json'),
 };
 
 function rj(file, fallback) {
@@ -55,6 +57,18 @@ const db = {
           is_free BOOLEAN NOT NULL DEFAULT FALSE,
           UNIQUE(employee_id, week_monday, day_of_week)
         );
+        CREATE TABLE IF NOT EXISTS announcements (
+          id SERIAL PRIMARY KEY,
+          admin_id INTEGER REFERENCES admins(id),
+          title TEXT NOT NULL,
+          content TEXT,
+          photo_data TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS employee_seen (
+          employee_id INTEGER PRIMARY KEY REFERENCES employees(id) ON DELETE CASCADE,
+          last_seen_at TIMESTAMPTZ DEFAULT '2000-01-01'
+        );
         CREATE TABLE IF NOT EXISTS vacation_requests (
           id SERIAL PRIMARY KEY,
           employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
@@ -78,8 +92,10 @@ const db = {
       if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
       if (!fs.existsSync(FILES.admins))    wj(FILES.admins,    [{ id: 1, name: 'Eyup', pin: '0000' }, { id: 2, name: 'Ayhan', pin: '1627' }]);
       if (!fs.existsSync(FILES.employees)) wj(FILES.employees, [{ id: 1, name: 'Shafiq', pin: '1111' }, { id: 2, name: 'Sadat', pin: '2222' }, { id: 3, name: 'Mohammed', pin: '3333' }]);
-      if (!fs.existsSync(FILES.weekplans)) wj(FILES.weekplans, []);
-      if (!fs.existsSync(FILES.vacations)) wj(FILES.vacations, []);
+      if (!fs.existsSync(FILES.weekplans))     wj(FILES.weekplans,     []);
+      if (!fs.existsSync(FILES.vacations))     wj(FILES.vacations,     []);
+      if (!fs.existsSync(FILES.announcements)) wj(FILES.announcements, []);
+      if (!fs.existsSync(FILES.seen))          wj(FILES.seen,          {});
     }
   },
 
@@ -276,6 +292,53 @@ const db = {
     const v = { id: nextId(vacations), employee_id, start_date, end_date, note: note || null, status: 'pending', reviewed_by: null, reviewed_at: null, admin_note: null, created_at: new Date().toISOString() };
     vacations.push(v); wj(FILES.vacations, vacations);
     return v;
+  },
+
+  async getAnnouncements() {
+    if (USE_PG) {
+      const r = await pool.query(`SELECT a.*, adm.name as admin_name FROM announcements a LEFT JOIN admins adm ON a.admin_id=adm.id ORDER BY a.created_at DESC`);
+      return r.rows;
+    }
+    const admins = rj(FILES.admins, []);
+    return rj(FILES.announcements, []).map(a => ({ ...a, admin_name: admins.find(x => x.id === a.admin_id)?.name || '?' })).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  },
+
+  async createAnnouncement(admin_id, title, content, photo_data) {
+    if (USE_PG) {
+      const r = await pool.query('INSERT INTO announcements (admin_id,title,content,photo_data) VALUES ($1,$2,$3,$4) RETURNING id', [admin_id, title, content||null, photo_data||null]);
+      return r.rows[0];
+    }
+    const list = rj(FILES.announcements, []);
+    const a = { id: list.length === 0 ? 1 : Math.max(...list.map(x=>x.id))+1, admin_id, title, content: content||null, photo_data: photo_data||null, created_at: new Date().toISOString() };
+    list.unshift(a); wj(FILES.announcements, list);
+    return a;
+  },
+
+  async deleteAnnouncement(id) {
+    if (USE_PG) { await pool.query('DELETE FROM announcements WHERE id=$1', [id]); return; }
+    wj(FILES.announcements, rj(FILES.announcements, []).filter(a => a.id !== id));
+  },
+
+  async getUnreadCount(employee_id) {
+    if (USE_PG) {
+      const seen = await pool.query('SELECT last_seen_at FROM employee_seen WHERE employee_id=$1', [employee_id]);
+      const lastSeen = seen.rows[0]?.last_seen_at || '2000-01-01';
+      const r = await pool.query('SELECT COUNT(*) FROM announcements WHERE created_at > $1', [lastSeen]);
+      return parseInt(r.rows[0].count);
+    }
+    const seen = rj(FILES.seen, {});
+    const lastSeen = seen[employee_id] || '2000-01-01';
+    return rj(FILES.announcements, []).filter(a => a.created_at > lastSeen).length;
+  },
+
+  async markSeen(employee_id) {
+    if (USE_PG) {
+      await pool.query('INSERT INTO employee_seen (employee_id, last_seen_at) VALUES ($1,NOW()) ON CONFLICT (employee_id) DO UPDATE SET last_seen_at=NOW()', [employee_id]);
+      return;
+    }
+    const seen = rj(FILES.seen, {});
+    seen[employee_id] = new Date().toISOString();
+    wj(FILES.seen, seen);
   },
 
   async reviewVacation(id, status, admin_id, admin_note) {
