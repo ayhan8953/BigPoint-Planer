@@ -201,12 +201,12 @@ const db = {
             VALUES ($1,$2,$3,NULL,NULL,TRUE,FALSE)
             ON CONFLICT (employee_id, week_monday, day_of_week) DO UPDATE SET start_time=NULL, end_time=NULL, is_free=TRUE, is_vacation=FALSE
           `, [e.employee_id, mondayStr, e.day_of_week]);
-        } else if (e.start_time && e.end_time) {
+        } else if (e.start_time) {
           await pool.query(`
             INSERT INTO week_plans (employee_id, week_monday, day_of_week, start_time, end_time, is_free, is_vacation)
             VALUES ($1,$2,$3,$4,$5,FALSE,FALSE)
             ON CONFLICT (employee_id, week_monday, day_of_week) DO UPDATE SET start_time=$4, end_time=$5, is_free=FALSE, is_vacation=FALSE
-          `, [e.employee_id, mondayStr, e.day_of_week, e.start_time, e.end_time]);
+          `, [e.employee_id, mondayStr, e.day_of_week, e.start_time, e.end_time || null]);
         } else {
           await pool.query('DELETE FROM week_plans WHERE employee_id=$1 AND week_monday=$2 AND day_of_week=$3', [e.employee_id, mondayStr, e.day_of_week]);
         }
@@ -215,7 +215,7 @@ const db = {
     }
     const kept = rj(FILES.weekplans, []).filter(e => e.week_monday !== mondayStr);
     const newEntries = entries
-      .filter(e => e.is_vacation || e.is_free || (e.start_time && e.end_time))
+      .filter(e => e.is_vacation || e.is_free || e.start_time)
       .map(e => ({ ...e, week_monday: mondayStr }));
     wj(FILES.weekplans, [...kept, ...newEntries]);
   },

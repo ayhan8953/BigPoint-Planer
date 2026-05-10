@@ -120,6 +120,8 @@ header {
 /* Template editor */
 .tmpl-table .day-col { font-weight: 700; text-align: left; padding: 0.4rem 0.6rem; white-space: nowrap; background: var(--bg); }
 .time-cell { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.time-row { display: flex; align-items: center; gap: 3px; }
+.time-label { font-size: 0.68rem; color: var(--muted); min-width: 20px; text-align: right; }
 .time-input { width: 72px; padding: 0.22rem 0.3rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.76rem; text-align: center; }
 .time-input:focus { outline: none; border-color: var(--primary); }
 

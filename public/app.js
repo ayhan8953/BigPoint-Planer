@@ -101,7 +101,8 @@ const App = (() => {
           if (e.is_vacation)               time = `<span class="schedule-time vacation">\u{1F3D6}&#65039; Ferien</span>`;
           else if (e.is_free)              time = `<span class="schedule-time free">Frei</span>`;
           else if (e.is_off || !e.start_time) time = `<span class="schedule-time off">&mdash;</span>`;
-          else                             time = `<span class="schedule-time">${e.start_time}&thinsp;&ndash;&thinsp;${e.end_time} Uhr</span>`;
+          else if (e.end_time)             time = `<span class="schedule-time">${e.start_time}&thinsp;&ndash;&thinsp;${e.end_time} Uhr</span>`;
+          else                             time = `<span class="schedule-time">ab ${e.start_time} Uhr</span>`;
           const isMe = e.employee_id === currentUser.id;
           return `<div class="coworker-row${isMe ? ' coworker-me' : ''}">
             <span class="coworker-name">${esc(e.name)}${isMe ? ' <span class="me-badge">Ich</span>' : ''}</span>
@@ -247,7 +248,7 @@ const App = (() => {
           if (!e || e.is_off)       html += `<td class="cell-off">&mdash;</td>`;
           else if (e.is_vacation)   html += `<td class="cell-vacation">\u{1F3D6}&#65039; Ferien</td>`;
           else if (e.is_free)       html += `<td class="cell-free">Frei</td>`;
-          else                      html += `<td class="cell-time">${e.start_time}&ndash;${e.end_time}</td>`;
+          else                      html += `<td class="cell-time">${e.end_time ? `${e.start_time}&ndash;${e.end_time}` : `ab ${e.start_time}`}</td>`;
         });
         html += '</tr>';
       });
@@ -285,8 +286,8 @@ const App = (() => {
           html += `<td>
             <div class="plan-cell" id="cell_${emp.id}_${dow}">
               <div class="time-cell ${disabled ? 'time-disabled' : ''}">
-                <input type="time" class="time-input" id="p_${emp.id}_${dow}_s" value="${disabled ? '' : (v.start||'')}" ${disabled ? 'disabled' : ''}>
-                <input type="time" class="time-input" id="p_${emp.id}_${dow}_e" value="${disabled ? '' : (v.end||'')}"   ${disabled ? 'disabled' : ''}>
+                <div class="time-row"><span class="time-label">ab</span><input type="time" class="time-input" id="p_${emp.id}_${dow}_s" value="${disabled ? '' : (v.start||'')}" ${disabled ? 'disabled' : ''}></div>
+                <div class="time-row"><span class="time-label">bis</span><input type="time" class="time-input" id="p_${emp.id}_${dow}_e" value="${disabled ? '' : (v.end||'')}"   ${disabled ? 'disabled' : ''}></div>
               </div>
               <label class="frei-check">
                 <input type="checkbox" id="p_${emp.id}_${dow}_f" ${isFree ? 'checked' : ''} onchange="App.toggleFrei(${emp.id},${dow})"> Frei
@@ -341,7 +342,7 @@ const App = (() => {
         const e       = document.getElementById(`p_${emp.id}_${dow}_e`)?.value || '';
         const free    = document.getElementById(`p_${emp.id}_${dow}_f`)?.checked || false;
         const vacation = document.getElementById(`p_${emp.id}_${dow}_v`)?.checked || false;
-        if (!free && !vacation && ((s && !e) || (!s && e))) { invalid = true; }
+        if (!free && !vacation && (!s && e)) { invalid = true; }
         entries.push({ employee_id: emp.id, day_of_week: dow, start_time: s||null, end_time: e||null, is_free: free, is_vacation: vacation });
       });
     });
