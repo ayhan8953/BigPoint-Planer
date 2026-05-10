@@ -62,16 +62,24 @@ header {
 .week-label { font-size: 0.82rem; color: var(--muted); min-width: 115px; text-align: center; }
 
 /* Schedule (employee) */
-.schedule-list { display: flex; flex-direction: column; gap: 0.45rem; }
-.schedule-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.55rem 0.8rem; border-radius: 8px; background: var(--bg); }
-.schedule-day { font-weight: 700; min-width: 28px; font-size: 0.88rem; color: var(--muted); }
-.schedule-date { color: var(--muted); font-size: 0.82rem; min-width: 55px; }
-.schedule-time { font-size: 0.92rem; font-weight: 500; }
+.schedule-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.schedule-day-block { border-radius: 8px; background: var(--bg); overflow: hidden; }
+.today-block { background: #ECFDF5 !important; outline: 1.5px solid #6EE7B7; }
+.schedule-day-header { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.8rem; border-bottom: 1px solid var(--border); }
+.schedule-day { font-weight: 700; font-size: 0.88rem; color: var(--muted); min-width: 28px; }
+.schedule-date { color: var(--muted); font-size: 0.82rem; }
+.today-badge { margin-left: auto; font-size: 0.75rem; font-weight: 700; color: var(--success); }
+.schedule-coworkers { padding: 0.15rem 0.8rem; }
+.coworker-row { display: flex; align-items: center; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.coworker-row:last-child { border-bottom: none; }
+.coworker-row.coworker-me { background: rgba(196,18,23,0.05); margin: 0 -0.8rem; padding-left: 0.8rem; padding-right: 0.8rem; }
+.coworker-name { font-size: 0.88rem; }
+.me-badge { font-size: 0.68rem; background: var(--primary); color: white; padding: 0.08rem 0.32rem; border-radius: 10px; vertical-align: middle; margin-left: 0.3rem; }
+.schedule-time { font-size: 0.88rem; font-weight: 500; }
 .schedule-time.off  { color: var(--border); }
 .schedule-time.free { color: var(--muted); font-weight: 600; }
 .schedule-time.vacation { color: var(--success); font-weight: 600; }
 .today-row { background: #ECFDF5 !important; outline: 1.5px solid #6EE7B7; }
-.today-badge { margin-left: auto; font-size: 0.75rem; font-weight: 700; color: var(--success); }
 
 /* Vacation list */
 .vacation-list { display: flex; flex-direction: column; gap: 0.7rem; }

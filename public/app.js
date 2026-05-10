@@ -95,19 +95,26 @@ const App = (() => {
       const days = await (await fetch(`/api/schedule?week=${toISO(empWeek)}`)).json();
       const today = todayStr();
       el.innerHTML = days.map((day, i) => {
-        const e = day.employees.find(x => x.employee_id === currentUser.id);
-        if (!e) return '';
-        let time;
-        if (e.is_vacation)           time = `<span class="schedule-time vacation">\u{1F3D6}&#65039; Ferien</span>`;
-        else if (e.is_free)          time = `<span class="schedule-time free">Frei</span>`;
-        else if (!e.start_time)      time = `<span class="schedule-time off">&mdash;</span>`;
-        else                          time = `<span class="schedule-time">${e.start_time}&thinsp;&ndash;&thinsp;${e.end_time} Uhr</span>`;
         const isT = day.date === today;
-        return `<div class="schedule-row ${isT ? 'today-row' : ''}">
-          <span class="schedule-day">${DAYS[i]}</span>
-          <span class="schedule-date">${fmtDate(day.date)}</span>
-          ${time}
-          ${isT ? '<span class="today-badge">Heute</span>' : ''}
+        const empsHtml = day.employees.map(e => {
+          let time;
+          if (e.is_vacation)               time = `<span class="schedule-time vacation">\u{1F3D6}&#65039; Ferien</span>`;
+          else if (e.is_free)              time = `<span class="schedule-time free">Frei</span>`;
+          else if (e.is_off || !e.start_time) time = `<span class="schedule-time off">&mdash;</span>`;
+          else                             time = `<span class="schedule-time">${e.start_time}&thinsp;&ndash;&thinsp;${e.end_time} Uhr</span>`;
+          const isMe = e.employee_id === currentUser.id;
+          return `<div class="coworker-row${isMe ? ' coworker-me' : ''}">
+            <span class="coworker-name">${esc(e.name)}${isMe ? ' <span class="me-badge">Ich</span>' : ''}</span>
+            ${time}
+          </div>`;
+        }).join('');
+        return `<div class="schedule-day-block${isT ? ' today-block' : ''}">
+          <div class="schedule-day-header">
+            <span class="schedule-day">${DAYS[i]}</span>
+            <span class="schedule-date">${fmtDate(day.date)}</span>
+            ${isT ? '<span class="today-badge">Heute</span>' : ''}
+          </div>
+          <div class="schedule-coworkers">${empsHtml}</div>
         </div>`;
       }).join('');
     } catch { el.innerHTML = '<div class="empty">Fehler beim Laden.</div>'; }
@@ -262,7 +269,7 @@ const App = (() => {
       // map: [emp_id][dow] = { start, end, is_free }
       const map = {};
       employees.forEach(e => { map[e.id] = {}; });
-      saved.forEach(s => { if (map[s.employee_id]) map[s.employee_id][s.day_of_week] = { start: s.start_time||'', end: s.end_time||'', is_free: s.is_free }; });
+      saved.forEach(s => { if (map[s.employee_id]) map[s.employee_id][s.day_of_week] = { start: s.start_time||'', end: s.end_time||'', is_free: s.is_free, is_vacation: s.is_vacation }; });
 
       let html = `<table class="tmpl-table"><thead><tr><th class="day-col">Tag</th>`;
       employees.forEach(e => { html += `<th>${esc(e.name)}</th>`; });
@@ -272,15 +279,20 @@ const App = (() => {
         html += `<tr><td class="day-col">${dayName}</td>`;
         employees.forEach(emp => {
           const v = map[emp.id]?.[dow] || {};
-          const isFree = !!v.is_free;
+          const isFree     = !!v.is_free;
+          const isVacation = !!v.is_vacation;
+          const disabled   = isFree || isVacation;
           html += `<td>
             <div class="plan-cell" id="cell_${emp.id}_${dow}">
-              <div class="time-cell ${isFree ? 'time-disabled' : ''}">
-                <input type="time" class="time-input" id="p_${emp.id}_${dow}_s" value="${isFree ? '' : (v.start||'')}" ${isFree ? 'disabled' : ''}>
-                <input type="time" class="time-input" id="p_${emp.id}_${dow}_e" value="${isFree ? '' : (v.end||'')}"   ${isFree ? 'disabled' : ''}>
+              <div class="time-cell ${disabled ? 'time-disabled' : ''}">
+                <input type="time" class="time-input" id="p_${emp.id}_${dow}_s" value="${disabled ? '' : (v.start||'')}" ${disabled ? 'disabled' : ''}>
+                <input type="time" class="time-input" id="p_${emp.id}_${dow}_e" value="${disabled ? '' : (v.end||'')}"   ${disabled ? 'disabled' : ''}>
               </div>
               <label class="frei-check">
                 <input type="checkbox" id="p_${emp.id}_${dow}_f" ${isFree ? 'checked' : ''} onchange="App.toggleFrei(${emp.id},${dow})"> Frei
+              </label>
+              <label class="frei-check">
+                <input type="checkbox" id="p_${emp.id}_${dow}_v" ${isVacation ? 'checked' : ''} onchange="App.toggleFerien(${emp.id},${dow})"> Ferien
               </label>
             </div>
           </td>`;
@@ -294,14 +306,27 @@ const App = (() => {
   }
 
   function toggleFrei(empId, dow) {
-    const cb    = document.getElementById(`p_${empId}_${dow}_f`);
-    const sIn   = document.getElementById(`p_${empId}_${dow}_s`);
-    const eIn   = document.getElementById(`p_${empId}_${dow}_e`);
-    const tc    = sIn.closest('.time-cell');
-    const isFree = cb.checked;
-    sIn.disabled = isFree; eIn.disabled = isFree;
-    tc.classList.toggle('time-disabled', isFree);
-    if (isFree) { sIn.value = ''; eIn.value = ''; }
+    const fb  = document.getElementById(`p_${empId}_${dow}_f`);
+    const vb  = document.getElementById(`p_${empId}_${dow}_v`);
+    const sIn = document.getElementById(`p_${empId}_${dow}_s`);
+    const eIn = document.getElementById(`p_${empId}_${dow}_e`);
+    const tc  = sIn.closest('.time-cell');
+    if (fb.checked && vb) vb.checked = false;
+    sIn.disabled = fb.checked; eIn.disabled = fb.checked;
+    tc.classList.toggle('time-disabled', fb.checked);
+    if (fb.checked) { sIn.value = ''; eIn.value = ''; }
+  }
+
+  function toggleFerien(empId, dow) {
+    const fb  = document.getElementById(`p_${empId}_${dow}_f`);
+    const vb  = document.getElementById(`p_${empId}_${dow}_v`);
+    const sIn = document.getElementById(`p_${empId}_${dow}_s`);
+    const eIn = document.getElementById(`p_${empId}_${dow}_e`);
+    const tc  = sIn.closest('.time-cell');
+    if (vb.checked && fb) fb.checked = false;
+    sIn.disabled = vb.checked; eIn.disabled = vb.checked;
+    tc.classList.toggle('time-disabled', vb.checked);
+    if (vb.checked) { sIn.value = ''; eIn.value = ''; }
   }
 
   function planPrevWeek() { planWeek = addDays(planWeek, -7); loadPlanEditor(); }
@@ -312,11 +337,12 @@ const App = (() => {
     let invalid = false;
     employees.forEach(emp => {
       DAYS.forEach((_, dow) => {
-        const s    = document.getElementById(`p_${emp.id}_${dow}_s`)?.value || '';
-        const e    = document.getElementById(`p_${emp.id}_${dow}_e`)?.value || '';
-        const free = document.getElementById(`p_${emp.id}_${dow}_f`)?.checked || false;
-        if (!free && ((s && !e) || (!s && e))) { invalid = true; }
-        entries.push({ employee_id: emp.id, day_of_week: dow, start_time: s||null, end_time: e||null, is_free: free });
+        const s       = document.getElementById(`p_${emp.id}_${dow}_s`)?.value || '';
+        const e       = document.getElementById(`p_${emp.id}_${dow}_e`)?.value || '';
+        const free    = document.getElementById(`p_${emp.id}_${dow}_f`)?.checked || false;
+        const vacation = document.getElementById(`p_${emp.id}_${dow}_v`)?.checked || false;
+        if (!free && !vacation && ((s && !e) || (!s && e))) { invalid = true; }
+        entries.push({ employee_id: emp.id, day_of_week: dow, start_time: s||null, end_time: e||null, is_free: free, is_vacation: vacation });
       });
     });
     if (invalid) { alert('Bitte immer Von und Bis angeben, oder "Frei" ankreuzen, oder alles leer lassen.'); return; }
@@ -348,11 +374,18 @@ const App = (() => {
         const label = v.status==='pending' ? '⏳ Ausstehend' : v.status==='approved' ? '✅ Genehmigt' : '❌ Abgelehnt';
         const reviewer = v.reviewer_name ? `<div class="vacation-meta">Von ${esc(v.reviewer_name)} ${v.status==='approved' ? 'genehmigt' : 'abgelehnt'}</div>` : '';
         const adminNote = v.admin_note ? `<div class="admin-note">&#128172; ${esc(v.admin_note)}</div>` : '';
-        const actions = v.status === 'pending' ? `
-          <div class="vacation-actions">
-            <button class="btn btn-success btn-sm" onclick="App.reviewVacation(${v.id},'approved')">&#10003; Genehmigen</button>
-            <button class="btn btn-danger  btn-sm" onclick="App.reviewVacation(${v.id},'rejected')">&#10007; Ablehnen</button>
-          </div>` : '';
+        const actions = v.status === 'pending'
+          ? `<div class="vacation-actions">
+              <button class="btn btn-success btn-sm" onclick="App.reviewVacation(${v.id},'approved')">&#10003; Genehmigen</button>
+              <button class="btn btn-danger  btn-sm" onclick="App.reviewVacation(${v.id},'rejected')">&#10007; Ablehnen</button>
+             </div>`
+          : v.status === 'approved'
+          ? `<div class="vacation-actions">
+              <button class="btn btn-danger btn-sm" onclick="App.reviewVacation(${v.id},'rejected')">&#10007; Ablehnen</button>
+             </div>`
+          : `<div class="vacation-actions">
+              <button class="btn btn-success btn-sm" onclick="App.reviewVacation(${v.id},'approved')">&#10003; Genehmigen</button>
+             </div>`;
         return `<div class="vacation-item">
           <div class="vacation-header">
             <div>
@@ -464,7 +497,8 @@ const App = (() => {
         <div class="emp-row">
           <span class="emp-name">${esc(e.name)}</span>
           <span class="emp-pin">PIN: ${esc(e.pin)}</span>
-          <button class="btn btn-secondary btn-sm" onclick="App.openPinModal(${e.id},'${esc(e.name)}')">&#9999;&#65039; PIN &auml;ndern</button>
+          <button class="btn btn-secondary btn-sm" onclick="App.openPinModal(${e.id},'${esc(e.name)}')">&#9999;&#65039; PIN</button>
+          <button class="btn btn-danger btn-sm" onclick="App.deleteEmployee(${e.id},'${esc(e.name)}')">&#128465;&#65039;</button>
         </div>`).join('');
     } catch { el.innerHTML = '<div class="empty">Fehler beim Laden.</div>'; }
   }
@@ -493,6 +527,17 @@ const App = (() => {
       employees = await (await fetch('/api/employees')).json();
       loadEmpList();
     } catch { alert('Fehler beim Hinzufügen.'); }
+  }
+
+  async function deleteEmployee(id, name) {
+    if (!confirm(`Mitarbeiter "${name}" wirklich löschen?\nAlle zugehörigen Plandaten werden entfernt.`)) return;
+    try {
+      const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      employees = await (await fetch('/api/employees')).json();
+      loadEmpList();
+    } catch { alert('Fehler beim Löschen.'); }
   }
 
   function openPinModal(id, name) {
@@ -535,9 +580,9 @@ const App = (() => {
     pinPress, pinDelete, logout, showScreen,
     prevWeek, nextWeek, showVacationForm, submitVacation,
     adminPrevWeek, adminNextWeek, adminTab,
-    planPrevWeek, planNextWeek, savePlan, toggleFrei,
+    planPrevWeek, planNextWeek, savePlan, toggleFrei, toggleFerien,
     loadAdminVacations, reviewVacation, closeReviewModal, confirmReview,
-    showAddEmpForm, hideAddEmpForm, addEmployee,
+    showAddEmpForm, hideAddEmpForm, addEmployee, deleteEmployee,
     openPinModal, closePinModal, savePin,
     createAnnouncement, deleteAnnouncement,
     dismissPopup, goToAnnouncements

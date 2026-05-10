@@ -43,6 +43,13 @@ app.post('/api/employees', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.delete('/api/employees/:id', async (req, res) => {
+  try {
+    await db.deleteEmployee(parseInt(req.params.id));
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.put('/api/employees/:id/pin', async (req, res) => {
   try {
     const id = parseInt(req.params.id);

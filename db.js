@@ -55,6 +55,7 @@ const db = {
           start_time TIME,
           end_time TIME,
           is_free BOOLEAN NOT NULL DEFAULT FALSE,
+          is_vacation BOOLEAN NOT NULL DEFAULT FALSE,
           UNIQUE(employee_id, week_monday, day_of_week)
         );
         CREATE TABLE IF NOT EXISTS announcements (
@@ -84,6 +85,7 @@ const db = {
       `);
       // Migrate: add admin_note if missing (for existing DBs)
       await pool.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS admin_note TEXT;`).catch(() => {});
+      await pool.query(`ALTER TABLE week_plans ADD COLUMN IF NOT EXISTS is_vacation BOOLEAN NOT NULL DEFAULT FALSE;`).catch(() => {});
       await pool.query(`
         INSERT INTO admins (id, name, pin) VALUES (1,'Eyup','0000'),(2,'Ayhan','1627') ON CONFLICT (id) DO NOTHING;
         INSERT INTO employees (name, pin) VALUES ('Shafiq','1111'),('Sadat','2222'),('Mohammed','3333') ON CONFLICT (name) DO NOTHING;
@@ -153,6 +155,14 @@ const db = {
     return { id: emp.id, name: emp.name };
   },
 
+  async deleteEmployee(id) {
+    if (USE_PG) { await pool.query('DELETE FROM employees WHERE id=$1', [id]); return; }
+    wj(FILES.employees, rj(FILES.employees, []).filter(e => e.id !== id));
+    wj(FILES.weekplans, rj(FILES.weekplans, []).filter(e => e.employee_id !== id));
+    wj(FILES.vacations, rj(FILES.vacations, []).filter(v => v.employee_id !== id));
+    const seen = rj(FILES.seen, {}); delete seen[id]; wj(FILES.seen, seen);
+  },
+
   async updateEmployeePin(id, pin) {
     if (USE_PG) { await pool.query('UPDATE employees SET pin=$1 WHERE id=$2', [pin, id]); return; }
     const emps = rj(FILES.employees, []);
@@ -179,17 +189,23 @@ const db = {
   async saveWeekPlan(mondayStr, entries) {
     if (USE_PG) {
       for (const e of entries) {
-        if (e.is_free) {
+        if (e.is_vacation) {
           await pool.query(`
-            INSERT INTO week_plans (employee_id, week_monday, day_of_week, start_time, end_time, is_free)
-            VALUES ($1,$2,$3,NULL,NULL,TRUE)
-            ON CONFLICT (employee_id, week_monday, day_of_week) DO UPDATE SET start_time=NULL, end_time=NULL, is_free=TRUE
+            INSERT INTO week_plans (employee_id, week_monday, day_of_week, start_time, end_time, is_free, is_vacation)
+            VALUES ($1,$2,$3,NULL,NULL,FALSE,TRUE)
+            ON CONFLICT (employee_id, week_monday, day_of_week) DO UPDATE SET start_time=NULL, end_time=NULL, is_free=FALSE, is_vacation=TRUE
+          `, [e.employee_id, mondayStr, e.day_of_week]);
+        } else if (e.is_free) {
+          await pool.query(`
+            INSERT INTO week_plans (employee_id, week_monday, day_of_week, start_time, end_time, is_free, is_vacation)
+            VALUES ($1,$2,$3,NULL,NULL,TRUE,FALSE)
+            ON CONFLICT (employee_id, week_monday, day_of_week) DO UPDATE SET start_time=NULL, end_time=NULL, is_free=TRUE, is_vacation=FALSE
           `, [e.employee_id, mondayStr, e.day_of_week]);
         } else if (e.start_time && e.end_time) {
           await pool.query(`
-            INSERT INTO week_plans (employee_id, week_monday, day_of_week, start_time, end_time, is_free)
-            VALUES ($1,$2,$3,$4,$5,FALSE)
-            ON CONFLICT (employee_id, week_monday, day_of_week) DO UPDATE SET start_time=$4, end_time=$5, is_free=FALSE
+            INSERT INTO week_plans (employee_id, week_monday, day_of_week, start_time, end_time, is_free, is_vacation)
+            VALUES ($1,$2,$3,$4,$5,FALSE,FALSE)
+            ON CONFLICT (employee_id, week_monday, day_of_week) DO UPDATE SET start_time=$4, end_time=$5, is_free=FALSE, is_vacation=FALSE
           `, [e.employee_id, mondayStr, e.day_of_week, e.start_time, e.end_time]);
         } else {
           await pool.query('DELETE FROM week_plans WHERE employee_id=$1 AND week_monday=$2 AND day_of_week=$3', [e.employee_id, mondayStr, e.day_of_week]);
@@ -199,7 +215,7 @@ const db = {
     }
     const kept = rj(FILES.weekplans, []).filter(e => e.week_monday !== mondayStr);
     const newEntries = entries
-      .filter(e => e.is_free || (e.start_time && e.end_time))
+      .filter(e => e.is_vacation || e.is_free || (e.start_time && e.end_time))
       .map(e => ({ ...e, week_monday: mondayStr }));
     wj(FILES.weekplans, [...kept, ...newEntries]);
   },
@@ -231,6 +247,7 @@ const db = {
           if (onVac) return { employee_id: emp.id, name: emp.name, is_vacation: true };
           const p = plans.rows.find(p => p.employee_id === emp.id && p.day_of_week === i);
           if (!p) return { employee_id: emp.id, name: emp.name, is_off: true };
+          if (p.is_vacation) return { employee_id: emp.id, name: emp.name, is_vacation: true };
           if (p.is_free) return { employee_id: emp.id, name: emp.name, is_free: true };
           return { employee_id: emp.id, name: emp.name, start_time: p.start_time, end_time: p.end_time };
         })
@@ -248,6 +265,7 @@ const db = {
         if (onVac) return { employee_id: emp.id, name: emp.name, is_vacation: true };
         const p = plans.find(p => p.employee_id === emp.id && p.day_of_week === i);
         if (!p) return { employee_id: emp.id, name: emp.name, is_off: true };
+        if (p.is_vacation) return { employee_id: emp.id, name: emp.name, is_vacation: true };
         if (p.is_free) return { employee_id: emp.id, name: emp.name, is_free: true };
         return { employee_id: emp.id, name: emp.name, start_time: p.start_time, end_time: p.end_time };
       })
