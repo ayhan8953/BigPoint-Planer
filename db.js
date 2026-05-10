@@ -176,7 +176,7 @@ const db = {
         SELECT wp.employee_id, e.name, wp.day_of_week,
                to_char(wp.start_time,'HH24:MI') as start_time,
                to_char(wp.end_time,'HH24:MI') as end_time,
-               wp.is_free
+               wp.is_free, wp.is_vacation
         FROM week_plans wp JOIN employees e ON wp.employee_id=e.id
         WHERE wp.week_monday=$1
         ORDER BY e.name, wp.day_of_week
@@ -234,7 +234,7 @@ const db = {
         SELECT employee_id, day_of_week,
                to_char(start_time,'HH24:MI') as start_time,
                to_char(end_time,'HH24:MI') as end_time,
-               is_free
+               is_free, is_vacation
         FROM week_plans WHERE week_monday=$1`, [mondayStr]);
       const vacs = await pool.query(
         `SELECT employee_id, start_date, end_date FROM vacation_requests WHERE status='approved' AND start_date <= $1 AND end_date >= $2`,
